@@ -1,6 +1,6 @@
 import os
-from fastapi import FastAPI, Form, File, UploadFile , HTTPException
-import google.generativeai as genai
+from fastapi import FastAPI, Form, File, UploadFile, HTTPException
+import openai
 from dotenv import load_dotenv
 import zipfile
 import io
@@ -11,12 +11,12 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# Configure Google Gemini API
-GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found. Set it in the .env file.")
+# Configure OpenAI API
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY not found. Set it in the .env file.")
 
-genai.configure(api_key=GOOGLE_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
 @app.post("/api/")
 async def process_question(
@@ -41,19 +41,20 @@ async def process_question(
         # Construct the prompt without extracted text
         prompt = f"Answer this question in one word or number only: {question}"
     
-
     print(prompt)
     
-    # Get response from Gemini
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
+    # Get response from GPT-4o-mini
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1
+    )
     
-    # Extract answer (clean response)
-    answer = response.text.strip() if response.text else "Could not generate answer."
+    # Extract answer
+    answer = response["choices"][0]["message"]["content"].strip()
     
     return {"answer": answer}
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
